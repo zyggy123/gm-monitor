@@ -1,0 +1,22 @@
+{
+  "name": "gm-monitor-dashboard",
+  "version": "1.0.0",
+  "description": "Anti-Corruption GM Monitor Dashboard for AzerothCore 3.3.5a — demonstrative version",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start-auth": "node server-auth.js"
+  },
+  "keywords": ["azerothcore", "wotlk", "gm", "monitor", "eluna", "dashboard"],
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "mysql2": "^3.11.0"
+  },
+  "optionalDependencies": {
+    "express-session": "^1.18.0",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0"
+  }
+}

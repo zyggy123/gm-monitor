@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GM Monitor — Anti-Corruption Dashboard</title>
+<style>
+/* ============================================================
+   Base & Reset
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0e0e10;
+    color: #d4d4d4;
+    min-height: 100vh;
+    line-height: 1.5;
+}
+
+/* ============================================================
+   Header
+   ============================================================ */
+.header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-bottom: 2px solid #c41e3a;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.header h1 {
+    font-size: 1.4rem;
+    color: #c41e3a;
+    letter-spacing: 0.5px;
+}
+.header .subtitle {
+    font-size: 0.8rem;
+    color: #888;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* ============================================================
+   Stats Cards
+   ============================================================ */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+    padding: 20px 32px;
+}
+.stat-card {
+    background: #1c1c24;
+    border: 1px solid #2a2a3a;
+    border-radius: 8px;
+    padding: 16px 18px;
+    text-align: center;
+}
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+}
+.stat-card .stat-label {
+    font-size: 0.75rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 4px;
+}
+.stat-card.additem  { border-left: 3px solid #e6a817; }
+.stat-card.speed    { border-left: 3px solid #cc66ff; }
+.stat-card.modify   { border-left: 3px solid #4ecdc4; }
+.stat-card.send     { border-left: 3px solid #7b61ff; }
+.stat-card.total    { border-left: 3px solid #c41e3a; }
+.stat-card.today    { border-left: 3px solid #2ecc71; }
+.stat-card.learn    { border-left: 3px solid #4a9eff; }
+.stat-card.setskill { border-left: 3px solid #ff6b35; }
+.stat-card.npcadd   { border-left: 3px solid #ff66b2; }
+.stat-card.tele     { border-left: 3px solid #00d4ff; }
+.stat-card.revive   { border-left: 3px solid #2ecc71; }
+.stat-card.level    { border-left: 3px solid #a0d636; }
+
+/* ============================================================
+   Filters Bar
+   ============================================================ */
+.filters {
+    display: flex;
+    gap: 10px;
+    padding: 0 32px 16px;
+    flex-wrap: wrap;
+}
+.filters input,
+.filters select {
+    background: #1c1c24;
+    border: 1px solid #2a2a3a;
+    border-radius: 6px;
+    color: #d4d4d4;
+    padding: 8px 14px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+}
+.filters input:focus,
+.filters select:focus {
+    outline: none;
+    border-color: #c41e3a;
+}
+.filters input {
+    flex: 1;
+    min-width: 200px;
+}
+.filters select {
+    min-width: 160px;
+}
+.btn-refresh {
+    background: #c41e3a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-refresh:hover { background: #a01830; }
+
+/* ============================================================
+   Table Container
+   ============================================================ */
+.table-container {
+    padding: 0 32px 20px;
+    overflow-x: auto;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+thead th {
+    background: #1c1c24;
+    border-bottom: 2px solid #2a2a3a;
+    padding: 12px 14px;
+    text-align: left;
+    color: #aaa;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-size: 0.72rem;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+thead th:hover {
+    color: #c41e3a;
+}
+thead th .sort-arrow {
+    margin-left: 4px;
+    font-size: 0.7rem;
+}
+tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #1a1a24;
+    vertical-align: middle;
+}
+tbody tr:hover td {
+    background: #1a1a2e;
+}
+
+/* Command type badge */
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+.badge.additem    { background: #3d2e00; color: #e6a817; }
+.badge.speed      { background: #1a0033; color: #cc66ff; }
+.badge.modify     { background: #00332e; color: #4ecdc4; }
+.badge.send       { background: #1e1652; color: #7b61ff; }
+.badge.learn      { background: #002244; color: #4a9eff; }
+.badge.setskill   { background: #3d1a00; color: #ff6b35; }
+.badge.npc        { background: #3d0033; color: #ff66b2; }
+.badge.tele       { background: #003344; color: #00d4ff; }
+.badge.revive     { background: #003311; color: #2ecc71; }
+.badge.level      { background: #1a3300; color: #a0d636; }
+
+.target-name {
+    color: #2ecc71;
+    font-weight: 600;
+}
+.target-self {
+    color: #555;
+    font-size: 0.72rem;
+    font-style: italic;
+}
+.item-id {
+    color: #aaa;
+    font-size: 0.8rem;
+}
+.timestamp {
+    color: #777;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+/* Loading & empty states */
+.loading-row td,
+.empty-row td {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-size: 1rem;
+}
+.spinner {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border: 3px solid #2a2a3a;
+    border-top-color: #c41e3a;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   Pagination
+   ============================================================ */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 32px 30px;
+    flex-wrap: wrap;
+}
+.pagination button {
+    background: #1c1c24;
+    border: 1px solid #2a2a3a;
+    color: #d4d4d4;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.pagination button:hover:not(:disabled) {
+    background: #2a2a3a;
+    border-color: #c41e3a;
+}
+.pagination button.active {
+    background: #c41e3a;
+    border-color: #c41e3a;
+    color: #fff;
+    font-weight: 600;
+}
+.pagination button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+.pagination .page-info {
+    color: #777;
+    font-size: 0.8rem;
+    padding: 0 10px;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 768px) {
+    .header, .stats-row, .filters, .table-container, .pagination {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+    .filters { flex-direction: column; }
+    .filters input, .filters select { min-width: auto; }
+    table { font-size: 0.78rem; }
+    thead th, tbody td { padding: 8px 6px; }
+    .header h1 { font-size: 1.1rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1>Anti-Corruption GM Monitor</h1>
+        <div class="subtitle">AzerothCore 3.3.5a &bull; Security Dashboard</div>
+    </div>
+    <button class="btn-refresh" onclick="loadAll()">Refresh</button>
+</div>
+
+<!-- Stats row -->
+<div class="stats-row" id="statsRow">
+    <div class="stat-card total"><div class="stat-value" id="statTotal">-</div><div class="stat-label">Total Logs</div></div>
+    <div class="stat-card today"><div class="stat-value" id="statToday">-</div><div class="stat-label">Today</div></div>
+    <div class="stat-card additem"><div class="stat-value" id="statAdditem">-</div><div class="stat-label">.additem</div></div>
+    <div class="stat-card speed"><div class="stat-value" id="statSpeed">-</div><div class="stat-label">.modify speed</div></div>
+    <div class="stat-card modify"><div class="stat-value" id="statModify">-</div><div class="stat-label">.modify money</div></div>
+    <div class="stat-card send"><div class="stat-value" id="statSend">-</div><div class="stat-label">.send items</div></div>
+    <div class="stat-card learn"><div class="stat-value" id="statLearn">-</div><div class="stat-label">.learn</div></div>
+    <div class="stat-card setskill"><div class="stat-value" id="statSetskill">-</div><div class="stat-label">.setskill</div></div>
+    <div class="stat-card npcadd"><div class="stat-value" id="statNpcAdd">-</div><div class="stat-label">.npc add</div></div>
+    <div class="stat-card tele"><div class="stat-value" id="statTele">-</div><div class="stat-label">.tele</div></div>
+    <div class="stat-card revive"><div class="stat-value" id="statRevive">-</div><div class="stat-label">.revive</div></div>
+    <div class="stat-card level"><div class="stat-value" id="statLevel">-</div><div class="stat-label">.level</div></div>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+    <input type="text" id="searchInput" placeholder="Search by character name or command…" oninput="onSearch()">
+    <select id="typeSelect" onchange="onFilterChange()">
+        <option value="">All command types</option>
+        <option value="additem">.additem</option>
+        <option value="modify speed">.modify speed</option>
+        <option value="modify money">.modify money</option>
+        <option value="send items">.send items</option>
+        <option value="learn">.learn</option>
+        <option value="setskill">.setskill</option>
+        <option value="npc add">.npc add</option>
+        <option value="tele">.tele</option>
+        <option value="revive">.revive</option>
+        <option value="level">.level</option>
+    </select>
+    <select id="sortSelect" onchange="onFilterChange()">
+        <option value="execution_time">Sort: Time</option>
+        <option value="character_name">Sort: Name</option>
+        <option value="command_text">Sort: Command</option>
+        <option value="account_id">Sort: Account</option>
+    </select>
+    <select id="dirSelect" onchange="onFilterChange()">
+        <option value="DESC">Newest first</option>
+        <option value="ASC">Oldest first</option>
+    </select>
+</div>
+
+<!-- Table -->
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Account</th>
+                <th>Character</th>
+                <th>Command</th>
+                <th>Time</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <tr class="loading-row"><td colspan="5"><div class="spinner"></div><br>Loading…</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<div class="pagination" id="pagination"></div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+let state = {
+    page:   1,
+    search: '',
+    type:   '',
+    sort:   'execution_time',
+    dir:    'DESC'
+};
+let debounceTimer = null;
+
+// ============================================================
+// Boot
+// ============================================================
+loadAll();
+
+// ============================================================
+// Load both stats and logs
+// ============================================================
+function loadAll() {
+    loadStats();
+    loadLogs();
+}
+
+// ============================================================
+// Stats API
+// ============================================================
+async function loadStats() {
+    try {
+        const res = await fetch('/api/stats');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        document.getElementById('statTotal').textContent    = fmtNum(data.total);
+        document.getElementById('statToday').textContent    = fmtNum(data.today);
+        document.getElementById('statAdditem').textContent  = fmtNum(data.additem);
+        document.getElementById('statSpeed').textContent    = fmtNum(data.modifySpeed);
+        document.getElementById('statModify').textContent   = fmtNum(data.modifyMoney);
+        document.getElementById('statSend').textContent     = fmtNum(data.sendItems);
+        document.getElementById('statLearn').textContent    = fmtNum(data.learn);
+        document.getElementById('statSetskill').textContent = fmtNum(data.setskill);
+        document.getElementById('statNpcAdd').textContent   = fmtNum(data.npcAdd);
+        document.getElementById('statTele').textContent     = fmtNum(data.tele);
+        document.getElementById('statRevive').textContent   = fmtNum(data.revive);
+        document.getElementById('statLevel').textContent    = fmtNum(data.level);
+    } catch (err) {
+        console.error('Stats error:', err);
+    }
+}
+
+// ============================================================
+// Logs API
+// ============================================================
+async function loadLogs() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="5"><div class="spinner"></div><br>Loading…</td></tr>';
+
+    const params = new URLSearchParams({
+        search: state.search,
+        type:   state.type,
+        page:   state.page,
+        sort:   state.sort,
+        dir:    state.dir
+    });
+
+    try {
+        const res = await fetch('/api/logs?' + params);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+
+        if (!data.data || data.data.length === 0) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No records found</td></tr>';
+        } else {
+            tbody.innerHTML = data.data.map(row =>
+                '<tr>' +
+                    '<td>' + esc(row.id) + '</td>' +
+                    '<td>' + esc(row.account_id) + '</td>' +
+                    '<td>' + esc(row.character_name) + '</td>' +
+                    '<td>' + renderCommand(row.command_text) + '</td>' +
+                    '<td class="timestamp" title="' + esc(row.execution_time) + '">' +
+                        fmtTime(row.execution_time) +
+                    '</td>' +
+                '</tr>'
+            ).join('');
+        }
+
+        renderPagination(data);
+        resolveItemNames();
+    } catch (err) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Failed to load data. Check server console.</td></tr>';
+        console.error('Logs error:', err);
+    }
+}
+
+// ============================================================
+// Item name cache
+// ============================================================
+const itemNameCache = new Map();
+
+async function resolveItemNames() {
+    const elements = document.querySelectorAll('.item-id[data-id]');
+    const missingIds = new Set();
+    elements.forEach(el => {
+        const id = el.dataset.id;
+        if (id && !itemNameCache.has(id)) missingIds.add(id);
+    });
+
+    if (missingIds.size > 0) {
+        try {
+            const res = await fetch('/api/items/batch?ids=' + [...missingIds].join(','));
+            if (res.ok) {
+                const names = await res.json();
+                Object.entries(names).forEach(([id, name]) => itemNameCache.set(id, name));
+            }
+        } catch (err) {
+            console.error('Item name fetch error:', err);
+        }
+    }
+
+    elements.forEach(el => {
+        const id = el.dataset.id;
+        const name = itemNameCache.get(id);
+        if (name) {
+            el.textContent = '[' + name + '] ';
+        }
+    });
+}
+
+// ============================================================
+// Render command with type badge + target detection + item IDs
+// ============================================================
+function renderCommand(cmd) {
+    if (!cmd) return '';
+
+    let target = '';
+    const displayCmd = cmd.replace(/\s*\[target:\s*([^\]]+)\]\s*$/i, function(_, name) {
+        target = name;
+        return '';
+    });
+
+    const lower = displayCmd.trim().toLowerCase();
+    let badge = '';
+    if (lower.startsWith('additem'))          badge = '<span class="badge additem">additem</span> ';
+    else if (lower.startsWith('modify speed')) badge = '<span class="badge speed">modify speed</span> ';
+    else if (lower.startsWith('modify money')) badge = '<span class="badge modify">modify money</span> ';
+    else if (lower.startsWith('send items'))   badge = '<span class="badge send">send items</span> ';
+    else if (lower.startsWith('learn'))        badge = '<span class="badge learn">learn</span> ';
+    else if (lower.startsWith('setskill'))     badge = '<span class="badge setskill">setskill</span> ';
+    else if (lower.startsWith('npc add'))      badge = '<span class="badge npc">npc add</span> ';
+    else if (lower.startsWith('tele'))         badge = '<span class="badge tele">tele</span> ';
+    else if (lower.startsWith('revive'))       badge = '<span class="badge revive">revive</span> ';
+    else if (lower.startsWith('level'))        badge = '<span class="badge level">level</span> ';
+
+    // Inject item ID spans for additem commands
+    let cmdHtml = esc(displayCmd.trim());
+    if (lower.startsWith('additem')) {
+        const m = displayCmd.trim().match(/^additem\s+(\d{1,10})/);
+        if (m) {
+            const itemId = m[1];
+            cmdHtml = cmdHtml.replace(
+                itemId,
+                '<span class="item-id" data-id="' + itemId + '">' + itemId + '</span>'
+            );
+        }
+    }
+
+    let html = badge + cmdHtml;
+
+    if (target) {
+        html += ' <span style="color:#aaa;font-size:0.78rem;">→</span> ' +
+                '<span class="target-name">' + esc(target) + '</span>';
+    } else {
+        html += ' <span class="target-self">(self)</span>';
+    }
+
+    return html;
+}
+
+// ============================================================
+// Pagination
+// ============================================================
+function renderPagination(data) {
+    const container = document.getElementById('pagination');
+    if (data.totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    let html = '<button ' + (state.page <= 1 ? 'disabled' : '') + ' onclick="goPage(' + (state.page - 1) + ')">Prev</button>';
+
+    const total = data.totalPages;
+    const start = Math.max(1, state.page - 2);
+    const end   = Math.min(total, state.page + 2);
+
+    if (start > 1) html += '<button onclick="goPage(1)">1</button>';
+    if (start > 2) html += '<span class="page-info">…</span>';
+
+    for (let p = start; p <= end; p++) {
+        html += '<button class="' + (p === state.page ? 'active' : '') + '" onclick="goPage(' + p + ')">' + p + '</button>';
+    }
+
+    if (end < total - 1) html += '<span class="page-info">…</span>';
+    if (end < total)     html += '<button onclick="goPage(' + total + ')">' + total + '</button>';
+
+    html += '<button ' + (state.page >= total ? 'disabled' : '') + ' onclick="goPage(' + (state.page + 1) + ')">Next</button>';
+    container.innerHTML = html;
+}
+
+function goPage(p) {
+    state.page = p;
+    loadLogs();
+    document.getElementById('tableContainer')?.scrollIntoView?.({ behavior: 'smooth' });
+}
+
+// ============================================================
+// Filter handlers (debounced for search)
+// ============================================================
+function onSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        state.search = document.getElementById('searchInput').value.trim();
+        state.page   = 1;
+        loadLogs();
+    }, 350);
+}
+
+function onFilterChange() {
+    state.type  = document.getElementById('typeSelect').value;
+    state.sort  = document.getElementById('sortSelect').value;
+    state.dir   = document.getElementById('dirSelect').value;
+    state.page  = 1;
+    loadLogs();
+}
+
+// ============================================================
+// Utilities
+// ============================================================
+function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function fmtNum(n) {
+    if (n === null || n === undefined) return '0';
+    return Number(n).toLocaleString('en-US');
+}
+
+function fmtTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts + (ts.includes('Z') ? '' : 'Z'));
+    if (isNaN(d.getTime())) return ts;
+    const now = new Date();
+    const diffMs = now - d;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr  = Math.floor(diffMin / 60);
+
+    if (diffSec < 60) return 'just now';
+    if (diffMin < 60) return diffMin + 'm ago';
+    if (diffHr  < 24) return diffHr  + 'h ago';
+    if (diffHr  < 48) return 'yesterday';
+
+    return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day:   'numeric',
+        hour:  '2-digit',
+        minute:'2-digit'
+    });
+}
+</script>
+
+</body>
+</html>
