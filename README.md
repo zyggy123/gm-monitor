@@ -497,4 +497,4 @@ All SQL uses prepared statements (`?` placeholders). The `ORDER BY` clause is va
 
 ## License
 
-MIT — use freely on your private server.
+[GNU Affero General Public License v3.0](LICENSE)
