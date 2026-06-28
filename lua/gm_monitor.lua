@@ -16,9 +16,6 @@
       2. Run '.reload eluna' on the server console
       3. Apply sql/auth_setup.sql to your auth database
       4. Start the dashboard: cd dashboard && npm install && npm start
-
-    Author:  Anti-Corruption GM Monitor Project
-    License: MIT
 ]=]
 
 local MONITORED_PREFIXES = {
